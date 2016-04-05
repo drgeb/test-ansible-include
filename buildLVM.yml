@@ -1,0 +1,41 @@
+---
+- hosts: all
+  become: yes
+  become_user: root
+  become_method: sudo
+  gather_facts: no
+  
+  tasks:
+  - name: Ensure required packages are installed
+    yum: pkg={{ item }} state=latest cache_valid_time=86400 update_cache=yes
+    with_items:
+      - lvm2
+      - parted
+
+  - name: creating new LVM volume group
+    lvg: vg={{ item.create_vgname }} pvs={{ item.new_disk }} state=present
+    when: create and config_lvm
+
+  - name: creating new LVM logical volume
+    lvol: vg={{ item.create_vgname }} lv={{ item.create_lvname }} size={{ item.create_lvsize }}
+    when: create and config_lvm
+
+  - name: creating new filesystem on new LVM logical volume
+    filesystem: fstype={{ item.filesystem }} dev=/dev/{{ item.create_vgname }}/{{ item.create_lvname }}
+    when: create and config_lvm
+
+  - name: mounting new filesystem
+    mount: name={{ item.new_mntp }} src=/dev/{{ item.create_vgname }}/{{ item.create_lvname }} fstype={{ item.filesystem }} state=mounted
+    when: create and config_lvm
+
+  - name: extending existing LVM volume group
+    lvg: vg={{ item.extend_vgname }} pvs={{ item.extend_disks }}
+    when: extend and config_lvm
+
+  - name: extending existing filesystem
+    command: lvextend {{ item.lvextend_options }} /dev/{{ item.extend_vgname }}/{{ item.extend_lvname }}
+    when: extend and config_lvm
+
+  - name: resizing filesystem
+    command: resize2fs /dev/{{ item.resize_vgname }}/{{ item.resize_lvname }}
+    when: resize and config_lvm

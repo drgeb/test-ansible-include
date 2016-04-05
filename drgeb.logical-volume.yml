@@ -1,0 +1,102 @@
+---
+- hosts: all
+  become: yes
+  become_user: root
+  become_method: sudo
+  vars:
+    config_lvm: true
+    
+  tasks:
+  - name: apt install lvm2
+    apt: name=lvm2 state=present
+    when: config_lvm and (ansible_distribution == "Debian" or ansible_distribution == 'Ubuntu')
+
+  - name: yum install lvm2
+    yum: name=system-storage-manager state=present
+    when: config_lvm and (ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux' or ansible_distribution == 'OracleLinux')
+    
+  - name: apt install scsitools
+    apt: name=scsitools state=present
+    when: config_lvm and (ansible_distribution == "Debian" or ansible_distribution == 'Ubuntu')
+
+  - name: yum install sg3_utils
+    yum: name=sg3_utils state=present
+    when: config_lvm and (ansible_distribution == "RedHat ")
+
+  - name: rescanning for new disks Debian
+    command: /sbin/rescan-scsi-bus
+    when: config_lvm and (ansible_distribution == "Debian" or ansible_distribution == 'Ubuntu')
+    
+  - name: rescanning for new disks RedHat
+    command: /usr/bin/rescan-scsi-bus.sh
+    when: config_lvm and (ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux' or ansible_distribution == 'OracleLinux')
+
+  - name: create Logical Volumes
+    include: buildLVM.yml
+    vars:
+      - { config_lvm: true                                        # must be set to true in order to execute any tasks in play (failsafe option :)- )
+          ,create: true                                            # set to true if creating a new logical volume (do not set extend or resize to true)
+          ,resize: false                                           # set to true if resizing the logical volume (do not set create to true)
+          ,extend: false                                           # set to true if extending the logical volume (do not set create to true)
+          ,current_disk: '/dev/sdb'                                # set to your current disk device already setup in lvm
+          ,new_disk: '/dev/sdb'                                    # set to new disk being added to volume group
+          ,new_mntp: '/u02'                                        # set to the desired mount point to be created and new logical volume to be mounted to
+          ,create_vgname: 'oracledb-vg'                            # set to volume group name to create
+          ,resize_vgname: 'oracledb-vg'                            # set to volume group name to resize
+          ,extend_vgname: 'oracledb-vg'                            # set to volume group name to extend
+          ,create_lvname: 'oracledb-lv'                            # set to logical volume name to create
+          ,resize_lvname: 'oracledb-lv'                            # set to logical volume name to resize
+          ,extend_lvname: 'oracledb-lv'                            # set to logical volume name to extend
+          ,create_lvsize: '100%FREE'                               # set to logical volume size to create --- (10G) - would create new lvm with 10Gigabytes -- (512) - would create new lvm with 512m
+          ,extend_disks: '{{ current_disk }},{{ new_disk }}'       # first disk is current volume group
+          ,lvextend_options: '-L+10G'                              # setting the options to pass to lvextend --- ('-L+10G') - would increase by 10GB whereas ('-l +100%FREE') would increase to full capacity
+          ,filesystem: 'ext4'                                      # set to filesystem type to format new logical volume with ( ext3, ext4, xfs, etc. )
+        }
+      - { config_lvm: true                                        # must be set to true in order to execute any tasks in play (failsafe option :)- )
+          ,create: true                                            # set to true if creating a new logical volume (do not set extend or resize to true)
+          ,resize: false                                           # set to true if resizing the logical volume (do not set create to true)
+          ,extend: false                                           # set to true if extending the logical volume (do not set create to true)
+          ,current_disk: '/dev/sdc'                                # set to your current disk device already setup in lvm
+          ,new_disk: '/dev/sdc'                                    # set to new disk being added to volume group
+          ,new_mntp: '/u03'                                        # set to the desired mount point to be created and new logical volume to be mounted to
+          ,create_vgname: 'odbbkp-vg'                              # set to volume group name to create
+          ,resize_vgname: 'odbbkp-vg'                              # set to volume group name to resize
+          ,extend_vgname: 'odbbkp-vg'                              # set to volume group name to extend
+          ,create_lvname: 'odbbkp-lv'                              # set to logical volume name to create
+          ,resize_lvname: 'odbbkp-lv'                              # set to logical volume name to resize
+          ,extend_lvname: 'odbbkp-lv'                              # set to logical volume name to extend
+          ,create_lvsize: '100%FREE'                               # set to logical volume size to create --- (10G) - would create new lvm with 10Gigabytes -- (512) - would create new lvm with 512m
+          ,extend_disks: '{{ current_disk }},{{ new_disk }}'       # first disk is current volume group
+          ,lvextend_options: '-L+10G'                              # setting the options to pass to lvextend --- ('-L+10G') - would increase by 10GB whereas ('-l +100%FREE') would increase to full capacity
+          ,filesystem: 'ext4'                                      # set to filesystem type to format new logical volume with ( ext3, ext4, xfs, etc. )
+        }
+      - { config_lvm: true                                        # must be set to true in order to execute any tasks in play (failsafe option :)- )
+          ,create: true                                            # set to true if creating a new logical volume (do not set extend or resize to true)
+          ,resize: false                                           # set to true if resizing the logical volume (do not set create to true)
+          ,extend: false                                           # set to true if extending the logical volume (do not set create to true)
+          ,current_disk: '/dev/sdd'                                # set to your current disk device already setup in lvm
+          ,new_disk: '/dev/sdd'                                    # set to new disk being added to volume group
+          ,new_mntp: '/u04'                                        # set to the desired mount point to be created and new logical volume to be mounted to
+          ,create_vgname: 'weblogic-vg'                            # set to volume group name to create
+          ,resize_vgname: 'weblogic-vg'                            # set to volume group name to resize
+          ,extend_vgname: 'weblogic-vg'                            # set to volume group name to extend
+          ,create_lvname: 'weblogic-lv'                            # set to logical volume name to create
+          ,resize_lvname: 'weblogic-lv'                            # set to logical volume name to resize
+          ,extend_lvname: 'weblogic-lv'                            # set to logical volume name to extend
+          ,create_lvsize: '100%FREE'                               # set to logical volume size to create --- (10G) - would create new lvm with 10Gigabytes -- (512) - would create new lvm with 512m
+          ,extend_disks: '{{ current_disk }},{{ new_disk }}'       # first disk is current volume group
+          ,lvextend_options: '-L+10G'                              # setting the options to pass to lvextend --- ('-L+10G') - would increase by 10GB whereas ('-l +100%FREE') would increase to full capacity
+          ,filesystem: 'ext4'                                      # set to filesystem type to format new logical volume with ( ext3, ext4, xfs, etc. )
+        }
+
+  #    - name : Update Owner for /u04
+  #      become_user: root
+  #      file: owner=oraclefmw group=ofmwinstall path='/u04'
+  
+#  - name : Update Owner for /u02 and /u03
+#    become_user: root
+#    file: owner=oracle group=oinstall path={{ item.src }}
+#    with_items: 
+#      - { src: '/u02' }
+#      - { src: '/u03' }   
+...
